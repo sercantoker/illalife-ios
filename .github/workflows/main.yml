@@ -15,7 +15,7 @@ jobs:
       - name: Node.js Kurulumu
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Klasor Yapisini Hazirla ve iOS Ekle
         run: |
@@ -26,33 +26,56 @@ jobs:
           cordova platform add ios
           cordova prepare ios
 
-      - name: Xcode ile Gercek iPhone (.ipa) ve Online Simulator Paketi Derle
+      - name: 1. Gercek iPhone (.ipa) Derle ve Paketle
         run: |
           cd platforms/ios
-          WORKSPACE=$(find . -maxdepth 1 -name "*.xcworkspace" | head -n 1)
           PROJECT=$(find . -maxdepth 1 -name "*.xcodeproj" | head -n 1)
-          if [ -n "$WORKSPACE" ]; then
-            SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list | awk '/Schemes:/{flag=1; next} flag && NF {sub(/^[ \t]+/, ""); print; exit}')
-            xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -sdk iphoneos CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO AD_HOC_CODE_SIGNING_ALLOWED=YES
-            xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
-          else
-            SCHEME=$(xcodebuild -project "$PROJECT" -list | awk '/Schemes:/{flag=1; next} flag && NF {sub(/^[ \t]+/, ""); print; exit}')
-            xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -sdk iphoneos CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO AD_HOC_CODE_SIGNING_ALLOWED=YES
-            xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
-          fi
+          SCHEME=$(xcodebuild -project "$PROJECT" -list | awk '/Schemes:/{flag=1; next} flag && NF {sub(/^[ \t]+/, ""); print; exit}')
+          
+          xcodebuild -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$GITHUB_WORKSPACE/out_device" \
+            SYMROOT="$GITHUB_WORKSPACE/out_device_sym" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
 
-      - name: Paketleri Hazirla
-        run: |
-          mkdir -p Payload
-          APP_DEVICE=$(find platforms/ios -path "*Release-iphoneos/*.app" -type d | head -n 1)
+          APP_DEVICE=$(find "$GITHUB_WORKSPACE/out_device" "$GITHUB_WORKSPACE/out_device_sym" "$GITHUB_WORKSPACE/platforms/ios" -name "*.app" -type d 2>/dev/null | head -n 1)
           echo "Bulunan Cihaz Paketi: $APP_DEVICE"
-          cp -r "$APP_DEVICE" Payload/
+          
+          mkdir -p "$GITHUB_WORKSPACE/Payload"
+          cp -R "$APP_DEVICE" "$GITHUB_WORKSPACE/Payload/"
+          cd "$GITHUB_WORKSPACE"
           zip -r -q illalife.ipa Payload
+          rm -rf Payload out_device out_device_sym platforms/ios/build
 
-          APP_SIM=$(find platforms/ios -path "*Release-iphonesimulator/*.app" -type d | head -n 1)
+      - name: 2. Online Simulator (.zip) Derle ve Paketle
+        run: |
+          cd platforms/ios
+          PROJECT=$(find . -maxdepth 1 -name "*.xcodeproj" | head -n 1)
+          SCHEME=$(xcodebuild -project "$PROJECT" -list | awk '/Schemes:/{flag=1; next} flag && NF {sub(/^[ \t]+/, ""); print; exit}')
+          
+          xcodebuild -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$GITHUB_WORKSPACE/out_sim" \
+            SYMROOT="$GITHUB_WORKSPACE/out_sim_sym" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+          APP_SIM=$(find "$GITHUB_WORKSPACE/out_sim" "$GITHUB_WORKSPACE/out_sim_sym" "$GITHUB_WORKSPACE/platforms/ios" -name "*.app" -type d 2>/dev/null | head -n 1)
           echo "Bulunan Simulator Paketi: $APP_SIM"
-          cd "$(dirname "$APP_SIM")"
-          zip -r -q "$GITHUB_WORKSPACE/illalife-online-simulator.zip" "$(basename "$APP_SIM")"
+          
+          SIM_DIR=$(dirname "$APP_SIM")
+          SIM_NAME=$(basename "$APP_SIM")
+          cd "$SIM_DIR"
+          zip -r -q "$GITHUB_WORKSPACE/illalife-online-simulator.zip" "$SIM_NAME"
 
       - name: Dosyalari Indirmeye Hazirla
         uses: actions/upload-artifact@v4
