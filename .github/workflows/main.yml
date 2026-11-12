@@ -1,0 +1,53 @@
+name: IllaLife iOS IPA Derleyici
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Proje Dosyalarini Cek
+        uses: actions/checkout@v4
+
+      - name: Node.js Kurulumu
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Klasor Yapisini Hazirla ve iOS Ekle
+        run: |
+          if [ -d "github_ios_repo" ]; then
+            cp -r github_ios_repo/* .
+          fi
+          npm install -g cordova
+          cordova platform add ios
+          cordova prepare ios
+
+      - name: Xcode ile Imzasiz .app Derle
+        run: |
+          cd platforms/ios
+          xcodebuild -workspace illalife.xcworkspace \
+            -scheme illalife \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build_output \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
+
+      - name: .app Paketini illalife.ipa Dosyasina Donustur
+        run: |
+          mkdir -p Payload
+          APP_PATH=$(find platforms/ios/build_output -name "*.app" -type d | head -n 1)
+          cp -r "$APP_PATH" Payload/
+          zip -r -q illalife.ipa Payload
+
+      - name: illalife.ipa Dosyasini Indirmeye Hazirla
+        uses: actions/upload-artifact@v4
+        with:
+          name: illalife-ipa-paketi
+          path: illalife.ipa
