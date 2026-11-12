@@ -1,4 +1,4 @@
-name: IllaLife iOS IPA Derleyici
+name: IllaLife iOS IPA ve Simulator Derleyici
 
 on:
   push:
@@ -26,44 +26,33 @@ jobs:
           cordova platform add ios
           cordova prepare ios
 
-      - name: Xcode ile Imzasiz .app Derle
+      - name: Xcode ile Gercek iPhone (.ipa) ve Online Simulator Paketi Derle
         run: |
           cd platforms/ios
-          WORKSPACE=$(find . -maxdepth 1 -name "*.xcworkspace" | head -n 1)
           PROJECT=$(find . -maxdepth 1 -name "*.xcodeproj" | head -n 1)
-          if [ -n "$WORKSPACE" ]; then
-            SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list | awk '/Schemes:/{flag=1; next} flag && NF {sub(/^[ \t]+/, ""); print; exit}')
-            xcodebuild -workspace "$WORKSPACE" \
-              -scheme "$SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              -derivedDataPath build_output \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO \
-              AD_HOC_CODE_SIGNING_ALLOWED=YES
-          else
-            SCHEME=$(xcodebuild -project "$PROJECT" -list | awk '/Schemes:/{flag=1; next} flag && NF {sub(/^[ \t]+/, ""); print; exit}')
-            xcodebuild -project "$PROJECT" \
-              -scheme "$SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              -derivedDataPath build_output \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO \
-              AD_HOC_CODE_SIGNING_ALLOWED=YES
-          fi
+          SCHEME=$(xcodebuild -project "$PROJECT" -list | awk '/Schemes:/{flag=1; next} flag && NF {sub(/^[ \t]+/, ""); print; exit}')
+          
+          # 1. Gercek iPhone icin derle (iphoneos)
+          xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -sdk iphoneos -derivedDataPath build_device CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO AD_HOC_CODE_SIGNING_ALLOWED=YES
+          
+          # 2. Online Test (Appetize.io) icin Simulator derle (iphonesimulator)
+          xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -sdk iphonesimulator -arch x86_64 -derivedDataPath build_sim CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
 
-      - name: .app Paketini illalife.ipa Dosyasina Donustur
+      - name: Paketleri Hazirla
         run: |
           mkdir -p Payload
-          APP_PATH=$(find platforms/ios/build_output -name "*.app" -type d | head -n 1)
-          cp -r "$APP_PATH" Payload/
+          APP_DEVICE=$(find platforms/ios/build_device -name "*.app" -type d | head -n 1)
+          cp -r "$APP_DEVICE" Payload/
           zip -r -q illalife.ipa Payload
+          
+          APP_SIM=$(find platforms/ios/build_sim -name "*.app" -type d | head -n 1)
+          cd "$(dirname "$APP_SIM")"
+          zip -r -q "$GITHUB_WORKSPACE/illalife-online-simulator.zip" "$(basename "$APP_SIM")"
 
-      - name: illalife.ipa Dosyasini Indirmeye Hazirla
+      - name: Dosyalari Indirmeye Hazirla
         uses: actions/upload-artifact@v4
         with:
-          name: illalife-ipa-paketi
-          path: illalife.ipa
+          name: illalife-ios-paketleri
+          path: |
+            illalife.ipa
+            illalife-online-simulator.zip
