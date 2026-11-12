@@ -33,58 +33,26 @@ jobs:
           PROJECT=$(find . -maxdepth 1 -name "*.xcodeproj" | head -n 1)
           if [ -n "$WORKSPACE" ]; then
             SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list | awk '/Schemes:/{flag=1; next} flag && NF {sub(/^[ \t]+/, ""); print; exit}')
-            xcodebuild -workspace "$WORKSPACE" \
-              -scheme "$SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              -derivedDataPath build_device \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO \
-              AD_HOC_CODE_SIGNING_ALLOWED=YES
-            xcodebuild -workspace "$WORKSPACE" \
-              -scheme "$SCHEME" \
-              -configuration Release \
-              -sdk iphonesimulator \
-              -destination 'generic/platform=iOS Simulator' \
-              -derivedDataPath build_sim \
-              CONFIGURATION_BUILD_DIR="$PWD/sim_out" \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO
+            xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -sdk iphoneos CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO AD_HOC_CODE_SIGNING_ALLOWED=YES
+            xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
           else
             SCHEME=$(xcodebuild -project "$PROJECT" -list | awk '/Schemes:/{flag=1; next} flag && NF {sub(/^[ \t]+/, ""); print; exit}')
-            xcodebuild -project "$PROJECT" \
-              -scheme "$SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              -derivedDataPath build_device \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO \
-              AD_HOC_CODE_SIGNING_ALLOWED=YES
-            xcodebuild -project "$PROJECT" \
-              -scheme "$SCHEME" \
-              -configuration Release \
-              -sdk iphonesimulator \
-              -destination 'generic/platform=iOS Simulator' \
-              -derivedDataPath build_sim \
-              CONFIGURATION_BUILD_DIR="$PWD/sim_out" \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO
+            xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -sdk iphoneos CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO AD_HOC_CODE_SIGNING_ALLOWED=YES
+            xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
           fi
 
       - name: Paketleri Hazirla
         run: |
           mkdir -p Payload
-          APP_DEVICE=$(find platforms/ios/build_device -name "*.app" -type d | head -n 1)
+          APP_DEVICE=$(find platforms/ios -path "*Release-iphoneos/*.app" -type d | head -n 1)
+          echo "Bulunan Cihaz Paketi: $APP_DEVICE"
           cp -r "$APP_DEVICE" Payload/
           zip -r -q illalife.ipa Payload
 
-          APP_SIM=$(find platforms/ios/sim_out platforms/ios/build_sim -name "*.app" -type d 2>/dev/null | head -n 1)
+          APP_SIM=$(find platforms/ios -path "*Release-iphonesimulator/*.app" -type d | head -n 1)
           echo "Bulunan Simulator Paketi: $APP_SIM"
-          (cd "$(dirname "$APP_SIM")" && zip -r -q "$GITHUB_WORKSPACE/illalife-online-simulator.zip" "$(basename "$APP_SIM")")
+          cd "$(dirname "$APP_SIM")"
+          zip -r -q "$GITHUB_WORKSPACE/illalife-online-simulator.zip" "$(basename "$APP_SIM")"
 
       - name: Dosyalari Indirmeye Hazirla
         uses: actions/upload-artifact@v4
