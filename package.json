@@ -1,0 +1,9 @@
+{
+  "name": "com.sercantoker.illalife",
+  "displayName": "illalife",
+  "version": "1.0.0",
+  "description": "Premium Dogal Kozmetik",
+  "main": "index.js",
+  "author": "Sercan Toker",
+  "license": "Apache-2.0"
+}

@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.sercantoker.illalife" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>illalife</name>
+    <description>Premium Dogal Kozmetik</description>
+    <author email="sercanopenid@gmail.com" href="https://sercantoker.tr">Sercan Toker</author>
+    <content src="index.html" />
+    <access origin="*" />
+    <allow-navigation href="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <preference name="Fullscreen" value="true" />
+    <preference name="Orientation" value="default" />
+    <preference name="deployment-target" value="13.0" />
+    <platform name="ios">
+        <icon src="res/ios/icon-1024.png" width="1024" height="1024" />
+        <splash src="res/ios/splash.png" />
+    </platform>
+</widget>
