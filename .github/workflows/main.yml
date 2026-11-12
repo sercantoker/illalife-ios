@@ -29,15 +29,31 @@ jobs:
       - name: Xcode ile Imzasiz .app Derle
         run: |
           cd platforms/ios
-          xcodebuild -workspace illalife.xcworkspace \
-            -scheme illalife \
-            -configuration Release \
-            -sdk iphoneos \
-            -derivedDataPath build_output \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            AD_HOC_CODE_SIGNING_ALLOWED=YES
+          WORKSPACE=$(find . -maxdepth 1 -name "*.xcworkspace" | head -n 1)
+          PROJECT=$(find . -maxdepth 1 -name "*.xcodeproj" | head -n 1)
+          if [ -n "$WORKSPACE" ]; then
+            SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list | awk '/Schemes:/{flag=1; next} flag && NF {sub(/^[ \t]+/, ""); print; exit}')
+            xcodebuild -workspace "$WORKSPACE" \
+              -scheme "$SCHEME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -derivedDataPath build_output \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              AD_HOC_CODE_SIGNING_ALLOWED=YES
+          else
+            SCHEME=$(xcodebuild -project "$PROJECT" -list | awk '/Schemes:/{flag=1; next} flag && NF {sub(/^[ \t]+/, ""); print; exit}')
+            xcodebuild -project "$PROJECT" \
+              -scheme "$SCHEME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -derivedDataPath build_output \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              AD_HOC_CODE_SIGNING_ALLOWED=YES
+          fi
 
       - name: .app Paketini illalife.ipa Dosyasina Donustur
         run: |
